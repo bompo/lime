@@ -37,7 +37,6 @@ class Preloader #if flash extends Sprite #end {
 		#if flash
 		super ();
 		#end
-		
 		onProgress.add (update);
 		
 	}
@@ -135,93 +134,79 @@ class Preloader #if flash extends Sprite #end {
 		
 	}
 	
-	
+	#if (js && html5)
+	private static function __measureFontNode (fontFamily:String):SpanElement {
+		
+		var node:SpanElement = cast Browser.document.createElement ("span");
+		node.setAttribute ("aria-hidden", "true");
+		var text = Browser.document.createTextNode ("BESbswy");
+		node.appendChild (text);
+		var style = node.style;
+		style.display = "block";
+		style.position = "absolute";
+		style.top = "-9999px";
+		style.left = "-9999px";
+		style.fontSize = "300px";
+		style.width = "auto";
+		style.height = "auto";
+		style.lineHeight = "normal";
+		style.margin = "0";
+		style.padding = "0";
+		style.fontVariant = "normal";
+		style.whiteSpace = "nowrap";
+		style.fontFamily = fontFamily;
+		Browser.document.body.appendChild (node);
+		return node;
+		
+	}
+	#end
+
+
 	#if (js && html5)
 	private function loadFont (font:String):Void {
+
+		var node1 = __measureFontNode ("'" + font + "', sans-serif");
+		var node2 = __measureFontNode ("'" + font + "', serif");
 		
-		if (untyped (Browser.document).fonts && untyped (Browser.document).fonts.load) {
+		var width1 = node1.offsetWidth;
+		var width2 = node2.offsetWidth;
+		
+		var interval = -1;
+		var timeout = 3000;
+		var intervalLength = 50;
+		var intervalCount = 0;
+		var fontLoaded, timeExpired;
+		
+		var checkFont = function () {
 			
-			untyped (Browser.document).fonts.load ("1em '" + font + "'").then (function (_) {
+			intervalCount++;
+			
+			fontLoaded = (node1.offsetWidth != width1 || node2.offsetWidth != width2);
+			timeExpired = (intervalCount * intervalLength >= timeout);
+			
+			if (fontLoaded || timeExpired) {
+				
+				Browser.window.clearInterval (interval);
+				node1.parentNode.removeChild (node1);
+				node2.parentNode.removeChild (node2);
+				node1 = null;
+				node2 = null;
+				
 				
 				loaded ++;
+				
 				onProgress.dispatch (loaded, total);
 				
 				if (loaded == total) {
-					
 					start ();
-					
 				}
-				
-			});
-			
-		} else {
-			
-			var node:SpanElement = cast Browser.document.createElement ("span");
-			node.innerHTML = "giItT1WQy@!-/#";
-			var style = node.style;
-			style.position = "absolute";
-			style.left = "-10000px";
-			style.top = "-10000px";
-			style.fontSize = "300px";
-			style.fontFamily = "sans-serif";
-			style.fontVariant = "normal";
-			style.fontStyle = "normal";
-			style.fontWeight = "normal";
-			style.letterSpacing = "0";
-			Browser.document.body.appendChild (node);
-			
-			var width = node.offsetWidth;
-			style.fontFamily = "'" + font + "', sans-serif";
-			
-			var interval:Null<Int> = null;
-			var found = false;
-			
-			var checkFont = function () {
-				
-				if (node.offsetWidth != width) {
-					
-					// Test font was still not available yet, try waiting one more interval?
-					if (!found) {
-						
-						found = true;
-						return false;
-						
-					}
-					
-					loaded ++;
-					
-					if (interval != null) {
-						
-						Browser.window.clearInterval (interval);
-						
-					}
-					
-					node.parentNode.removeChild (node);
-					node = null;
-					
-					onProgress.dispatch (loaded, total);
-					
-					if (loaded == total) {
-						
-						start ();
-						
-					}
-					
-					return true;
-					
-				}
-				
-				return false;
-				
-			}
-			
-			if (!checkFont ()) {
-				
-				interval = Browser.window.setInterval (checkFont, 50);
 				
 			}
 			
 		}
+		
+		interval = Browser.window.setInterval (checkFont, intervalLength);
+		
 		
 	}
 	#end
